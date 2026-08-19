@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AgntSpark1/agntspark-templates/template.schema.json",
+  "title": "AgntSpark Agent Template",
+  "description": "Schema for defining an AgntSpark agent template configuration",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "description",
+    "llm",
+    "system_prompt",
+    "tools",
+    "resources",
+    "env"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique template identifier (lowercase, hyphens)",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version number",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the agent",
+      "minLength": 10,
+      "maxLength": 500
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or organization name"
+    },
+    "license": {
+      "type": "string",
+      "description": "License identifier (SPDX format)",
+      "default": "MIT"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Categorization tags for the template",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "llm": {
+      "type": "object",
+      "description": "LLM provider and model configuration",
+      "required": ["provider", "model"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["openai", "anthropic", "google", "local", "azure", "aws"]
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier (e.g., gpt-4o, claude-sonnet-4-20250514)"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.7
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000,
+          "default": 4096
+        },
+        "top_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
+        },
+        "frequency_penalty": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2,
+          "default": 0
+        },
+        "presence_penalty": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2,
+          "default": 0
+        },
+        "stop_sequences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "request_timeout": {
+          "type": "integer",
+          "description": "Request timeout in seconds",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 60
+        }
+      }
+    },
+    "system_prompt": {
+      "type": "string",
+      "description": "System prompt defining agent behavior and persona",
+      "minLength": 10
+    },
+    "tools": {
+      "type": "array",
+      "description": "Tools available to the agent",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique tool name",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["function", "api", "file", "database", "shell", "http"]
+          },
+          "description": {
+            "type": "string",
+            "description": "What the tool does"
+          },
+          "handler": {
+            "type": "string",
+            "description": "Python function path (module.function_name) for function tools"
+          },
+          "config": {
+            "type": "object",
+            "description": "Tool-specific configuration",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource limits for the agent",
+      "properties": {
+        "memory_limit": {
+          "type": "integer",
+          "description": "Memory limit in MB",
+          "minimum": 64,
+          "maximum": 32768,
+          "default": 512
+        },
+        "cpu_limit": {
+          "type": "number",
+          "description": "CPU limit in cores",
+          "minimum": 0.1,
+          "maximum": 16,
+          "default": 1.0
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Execution timeout in seconds",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "description": "Maximum concurrent executions",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5
+        },
+        "retry_limit": {
+          "type": "integer",
+          "description": "Number of retry attempts on failure",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "description": "Environment variables (values can reference host env vars with ${VAR_NAME})",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional template metadata",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Template category"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon URL or emoji"
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example use cases",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

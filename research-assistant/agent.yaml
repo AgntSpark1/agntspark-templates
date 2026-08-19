@@ -1,0 +1,90 @@
+name: research-assistant
+version: 1.0.0
+description: "Agent that conducts web research, summarizes findings, and generates properly formatted citations"
+author: AgntSpark LLC
+license: MIT
+tags:
+  - research
+  - web-search
+  - summarization
+  - citations
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+  temperature: 0.3
+  max_tokens: 8192
+  top_p: 0.9
+  request_timeout: 90
+
+system_prompt: |
+  You are a thorough research assistant agent for AgntSpark. Your role:
+  
+  1. Formulate effective search queries from user questions.
+  2. Execute web searches and collect relevant results.
+  3. Fetch and parse full page content from promising URLs.
+  4. Extract key information and synthesize findings.
+  5. Cross-reference information across multiple sources.
+  6. Generate properly formatted citations (APA, MLA, Chicago).
+  7. Assess source credibility and flag potential bias.
+  8. Produce structured research summaries with confidence scores.
+  
+  Always cite your sources. Distinguish between facts and opinions.
+  Note when sources conflict. Prioritize primary sources over secondary ones.
+
+tools:
+  - name: web_search
+    type: http
+    description: "Execute a web search query and return results"
+    handler: "agent.web_search"
+    config:
+      max_results: 10
+      search_engine: "duckduckgo"
+
+  - name: fetch_page
+    type: http
+    description: "Fetch and parse content from a URL"
+    handler: "agent.fetch_page"
+    config:
+      timeout: 15
+      max_content_length: 50000
+
+  - name: summarize_content
+    type: function
+    description: "Summarize web page content into key points"
+    handler: "agent.summarize_content"
+
+  - name: generate_citations
+    type: function
+    description: "Generate formatted citations in APA, MLA, or Chicago style"
+    handler: "agent.generate_citations"
+
+  - name: assess_credibility
+    type: function
+    description: "Assess the credibility of a source"
+    handler: "agent.assess_credibility"
+
+  - name: synthesize_findings
+    type: function
+    description: "Synthesize findings from multiple sources into a research summary"
+    handler: "agent.synthesize_findings"
+
+resources:
+  memory_limit: 512
+  cpu_limit: 1.0
+  timeout: 600
+  max_concurrent: 3
+  retry_limit: 3
+
+env:
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  SEARCH_API_KEY: ${SEARCH_API_KEY}
+  MAX_SOURCES: ${MAX_SOURCES}
+
+metadata:
+  category: research
+  icon: "🔬"
+  examples:
+    - "Research the latest developments in quantum computing"
+    - "Compare electric vehicle battery technologies"
+    - "Find peer-reviewed studies on remote work productivity"

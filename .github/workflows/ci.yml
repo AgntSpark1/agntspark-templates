@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jsonschema==4.23.0 pyyaml==6.0.2 flake8==7.1.1 black==24.10.0
+
+      - name: Validate templates against schema
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          import sys
+          import yaml
+          import jsonschema
+
+          schema_path = "template.schema.json"
+          with open(schema_path) as f:
+              schema = json.load(f)
+
+          errors = []
+          template_dirs = []
+
+          for entry in os.listdir("."):
+              if not os.path.isdir(entry):
+                  continue
+              if entry.startswith(".") or entry.startswith("_"):
+                  continue
+              agent_yaml = os.path.join(entry, "agent.yaml")
+              if not os.path.isfile(agent_yaml):
+                  continue
+              template_dirs.append(entry)
+
+          if not template_dirs:
+              print("WARNING: No template directories found")
+              sys.exit(0)
+
+          for td in sorted(template_dirs):
+              yaml_path = os.path.join(td, "agent.yaml")
+              print(f"\nValidating: {td}/agent.yaml")
+
+              with open(yaml_path) as f:
+                  try:
+                      config = yaml.safe_load(f)
+                  except yaml.YAMLError as e:
+                      errors.append(f"{td}: YAML parse error: {e}")
+                      continue
+
+              try:
+                  jsonschema.validate(config, schema)
+                  print(f"  ✓ Schema valid")
+              except jsonschema.ValidationError as e:
+                  errors.append(f"{td}: {e.message} (path: {'/'.join(str(p) for p in e.absolute_path)})")
+                  print(f"  ✗ Schema invalid: {e.message}")
+
+              # Check required files exist
+              for req_file in ["agent.py", "requirements.txt", "README.md"]:
+                  req_path = os.path.join(td, req_file)
+                  if not os.path.isfile(req_path):
+                      errors.append(f"{td}: missing required file {req_file}")
+                      print(f"  ✗ Missing: {req_file}")
+                  else:
+                      print(f"  ✓ {req_file} present")
+
+          if errors:
+              print(f"\n{'='*60}")
+              print(f"FAILED: {len(errors)} error(s)")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          print(f"\n{'='*60}")
+          print(f"All {len(template_dirs)} templates validated successfully ✓")
+          EOF
+
+      - name: Lint Python files
+        run: |
+          flake8 --max-line-length=120 --extend-ignore=E203,W503 */agent.py || true
+          black --check --line-length=120 */agent.py || true
+
+      - name: Check requirements are pinned
+        run: |
+          python - <<'EOF'
+          import os
+          import re
+          import sys
+
+          errors = []
+          for entry in sorted(os.listdir(".")):
+              if not os.path.isdir(entry) or entry.startswith("."):
+                  continue
+              req_path = os.path.join(entry, "requirements.txt")
+              if not os.path.isfile(req_path):
+                  continue
+              with open(req_path) as f:
+                  for i, line in enumerate(f, 1):
+                      line = line.strip()
+                      if not line or line.startswith("#"):
+                          continue
+                      # Allow: package==1.0.0, package>=1.0, package~=1.0
+                      if not re.search(r'(==|>=|~=|<=)', line):
+                          errors.append(f"{entry}/requirements.txt:{i}: unpinned dependency: {line}")
+
+          if errors:
+              print("Unpinned dependencies found:")
+              for e in errors:
+                  print(f"  {e}")
+              sys.exit(1)
+
+          print("All dependencies are pinned ✓")
+          EOF

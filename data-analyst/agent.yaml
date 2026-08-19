@@ -1,0 +1,93 @@
+name: data-analyst
+version: 1.0.0
+description: "Agent that queries databases, generates visual charts, and writes structured analysis reports"
+author: AgntSpark LLC
+license: MIT
+tags:
+  - analytics
+  - sql
+  - reporting
+  - visualization
+
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.2
+  max_tokens: 8192
+  top_p: 0.95
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  request_timeout: 120
+
+system_prompt: |
+  You are an expert data analyst agent for AgntSpark. Your capabilities include:
+  
+  1. Translating natural language questions into SQL queries.
+  2. Executing queries against configured databases (PostgreSQL, MySQL, SQLite).
+  3. Generating visual charts from query results (bar, line, pie, scatter).
+  4. Writing structured analysis reports with findings, trends, and recommendations.
+  5. Identifying data quality issues and anomalies.
+  6. Providing statistical summaries (mean, median, stddev, percentiles).
+  
+  Always validate SQL before execution. Never run destructive queries (DROP, DELETE, TRUNCATE).
+  Present numerical findings with appropriate precision. Include data caveats when
+  sample sizes are small or data appears incomplete.
+
+tools:
+  - name: execute_sql
+    type: database
+    description: "Execute a read-only SQL query against the configured database"
+    handler: "agent.execute_sql"
+    config:
+      read_only: true
+      max_rows: 10000
+      timeout: 30
+
+  - name: generate_chart
+    type: function
+    description: "Generate a chart from query data and save as PNG"
+    handler: "agent.generate_chart"
+    config:
+      output_dir: "/tmp/agntspark-charts"
+      dpi: 150
+      style: "seaborn-v0_8-whitegrid"
+
+  - name: statistical_summary
+    type: function
+    description: "Compute statistical summary of a dataset"
+    handler: "agent.statistical_summary"
+
+  - name: write_report
+    type: file
+    description: "Write an analysis report to a markdown file"
+    handler: "agent.write_report"
+
+  - name: detect_anomalies
+    type: function
+    description: "Detect anomalies in query results using IQR method"
+    handler: "agent.detect_anomalies"
+
+resources:
+  memory_limit: 1024
+  cpu_limit: 2.0
+  timeout: 600
+  max_concurrent: 3
+  retry_limit: 2
+
+env:
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  DB_TYPE: ${DB_TYPE}
+  DB_HOST: ${DB_HOST}
+  DB_PORT: ${DB_PORT}
+  DB_NAME: ${DB_NAME}
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+  CHART_OUTPUT_DIR: ${CHART_OUTPUT_DIR}
+
+metadata:
+  category: data-analytics
+  icon: "📊"
+  examples:
+    - "What were our top 10 products by revenue last quarter?"
+    - "Show me monthly user growth trends for 2025"
+    - "Identify customers with anomalous billing patterns"
