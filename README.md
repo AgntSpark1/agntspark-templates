@@ -1,59 +1,83 @@
 # AgntSpark Templates
 
-Pre-built AI agent templates for common business use cases. Deploy in minutes, customize as needed.
+Official agent templates for the AgntSpark platform. Each is a small
+directory — a manifest, a few tool functions and a README — that runs on the
+platform's agent runtime image and gets its own HTTPS URL.
 
-## Available Templates
+| Template | What it does | Default model |
+|---|---|---|
+| [customer-support](templates/customer-support/) | Answers from a knowledge base, notices frustration, opens tickets | `gpt-4o` |
+| [code-reviewer](templates/code-reviewer/) | Reviews GitHub pull requests and pasted code | `claude-sonnet-4-5` |
 
-| Template | Use Case | LLM Provider | Framework |
-|----------|----------|-------------|-----------|
-| [Customer Support](templates/customer-support/) | Handle customer inquiries, route tickets, answer FAQs | OpenAI GPT-4o | AgntSpark Core |
-| [Code Reviewer](templates/code-reviewer/) | Review PRs, find bugs, check security, enforce style | Anthropic Claude | AgntSpark Core |
-| [Data Analyst](templates/data-analyst/) | Query databases, generate insights, visual reports | OpenAI GPT-4o | AgntSpark Core |
-| [Content Writer](templates/content-writer/) | Research, draft, and SEO-optimize long-form content | Anthropic Claude | AgntSpark Core |
+Any model works: choose one when you deploy and pass that provider's key.
 
-## Quick Start
+## Deploy a template
 
 ```bash
-# Install AgntSpark SDK
-pip install agntspark
-
-# Use a template
-agntspark init --template customer-support my-support-agent
-cd my-support-agent
-agntspark deploy
+curl -X POST https://agntapi.agntspark.com/v1/agents \
+  -H "Authorization: Bearer $AGNTSPARK_API_KEY" -H 'content-type: application/json' \
+  -d '{
+    "name": "support",
+    "model": "gpt-4o",
+    "api_key": "'"$OPENAI_API_KEY"'",
+    "deploy": {"image": "agntspark/template-customer-support:latest"}
+  }'
 ```
 
-## Template Structure
+The response's `url` is the agent. Talk to it:
 
-```
-templates/
-├── customer-support/
-│   └── agent.py          # Agent definition with tools
-├── code-reviewer/
-│   └── agent.py
-├── data-analyst/
-│   └── agent.py
-└── content-writer/
-    └── agent.py
+```bash
+curl -X POST https://<your-agent>.run.agntspark.com/invoke \
+  -H 'content-type: application/json' -d '{"input": "How do I reset my password?"}'
 ```
 
-## Customization
+## How templates run
 
-Each template is a starting point. You can:
-- Swap the LLM provider (OpenAI ↔ Anthropic ↔ Google)
-- Add custom tools via the `@agent.tool()` decorator
-- Adjust temperature and token limits
-- Enable/disable conversation memory
-- Set memory TTL for context retention
+Every hosted agent speaks runtime contract v1 — `GET /health`,
+`POST /invoke {"input", "session_id"?}` — served by
+[agntspark-core](https://github.com/AgntSpark1/agntspark-core)'s
+`agntspark/agent-runtime` image (see its README for the full contract). A
+template adds only what makes the agent useful:
 
-## Contributing
+```
+templates/<name>/
+├── agent.yaml         # prompt, default model, tools, env vars (template.schema.json)
+├── tools.py           # tool functions: called with keyword args, return text/JSON
+├── requirements.txt   # extra pip packages, if any
+└── README.md
+```
 
-To contribute a new template:
+The [`Dockerfile`](Dockerfile) builds `agntspark/template-<name>` on top of the
+runtime image by copying the directory to `/template`.
 
-1. Create a directory under `templates/`
-2. Add an `agent.py` with the agent definition
-3. Add a `README.md` describing the use case
-4. Submit a PR
+## Develop
+
+```bash
+pip install "agntspark-core[llm,server] @ git+https://github.com/AgntSpark1/agntspark-core.git" \
+  jsonschema pyyaml pytest
+pytest
+
+# Run a template locally
+AGNTSPARK_TEMPLATE_DIR=templates/customer-support OPENAI_API_KEY=... \
+  python -m agntspark_core serve --port 8080
+
+# Build images (runtime image first, from an agntspark-core checkout)
+docker build -t agntspark/agent-runtime:latest ../agntspark-core
+docker build --build-arg TEMPLATE=customer-support -t agntspark/template-customer-support:latest .
+```
+
+## Adding a template
+
+1. Create `templates/<name>/` with `agent.yaml`, `tools.py`, `requirements.txt`
+   and `README.md`; `name` in the manifest must match the directory.
+2. Keep tools deterministic and safe to call repeatedly; return JSON strings
+   and report failures in the result instead of raising.
+3. Add offline tests for the tools in `tests/`.
+4. `pytest` must pass; CI also builds every template image.
+
+The earlier data-analyst, content-generator and research-assistant drafts
+predate the runtime contract and were removed; they remain in git history
+(commit `8ac5cad`) for porting.
 
 ## License
 

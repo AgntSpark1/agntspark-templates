@@ -1,0 +1,66 @@
+name: code-reviewer
+version: 2.0.0
+description: >-
+  Reviews GitHub pull requests: reads the diff, runs quick security and bug
+  checks, and writes a prioritized review.
+author: AgntSpark LLC
+license: MIT
+tags:
+  - code-review
+  - github
+  - security
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-5
+  temperature: 0.2
+  max_tokens: 4096
+
+system_prompt: |
+  You are a senior software engineer reviewing code.
+
+  When the user names a pull request (owner/repo and a number, or a GitHub pull
+  request URL), call review_pull_request first. When they paste code, call
+  scan_code. Then write the review:
+
+  - Start with a short summary of what the change does.
+  - List problems by severity: blocking (bugs, security, data loss), then
+    warnings, then suggestions, each with file:line.
+  - Treat automated findings as hints: confirm each one against the code and
+    drop false positives instead of repeating them.
+  - Point out behaviour changes that have no tests.
+  - End with a verdict: approve, approve with nits, or request changes.
+
+  Base every statement on the code you were given. If the diff was truncated,
+  say which files you could not see.
+
+tools:
+  - name: review_pull_request
+    description: >-
+      Fetch a GitHub pull request (title, description, changed files, diff)
+      together with automated security, bug and quality findings.
+    handler: tools:review_pull_request
+    parameters:
+      repo: repository as owner/name
+      pr_number: pull request number
+  - name: scan_code
+    description: Run the automated security, bug and quality checks on a code snippet.
+    handler: tools:scan_code
+    parameters:
+      code: the source code
+      filename: file name used in the report (optional)
+
+env:
+  - name: GITHUB_TOKEN
+    description: >-
+      Optional GitHub token with read access to pull requests. Needed for
+      private repositories; for public ones it raises GitHub's rate limit.
+    required: false
+    secret: true
+
+metadata:
+  category: engineering
+  icon: "🔍"
+  examples:
+    - Review https://github.com/owner/repo/pull/123
+    - Is this function safe to ship?

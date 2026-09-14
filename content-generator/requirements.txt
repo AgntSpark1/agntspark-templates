@@ -1,2 +1,0 @@
-# No external dependencies — all logic is self-contained
-# (LLM calls handled by AgntSpark platform in production)

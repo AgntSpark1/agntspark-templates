@@ -1,0 +1,6 @@
+# Pinned here so local runs match CI regardless of any user-level ruff config.
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B"]

@@ -1,0 +1,77 @@
+name: customer-support
+version: 2.0.0
+description: >-
+  Customer support agent that answers from your knowledge base, notices when a
+  customer is upset, and opens tickets for issues it can't resolve.
+author: AgntSpark LLC
+license: MIT
+tags:
+  - support
+  - customer-service
+  - tickets
+
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.3
+  max_tokens: 2048
+
+system_prompt: |
+  You are a customer support agent. For every customer message:
+
+  1. If the customer seems upset, acknowledge how they feel before anything else.
+  2. Search the knowledge base before answering product questions, and cite the
+     article id you relied on, e.g. [KB-002].
+  3. Never invent policies, prices or steps that aren't in the knowledge base.
+     If it doesn't cover the question, say so and open a ticket.
+  4. Open a ticket for bugs, billing disputes, account access problems or
+     anything else you can't resolve, and give the customer the ticket id.
+  5. Keep answers short, friendly and step by step.
+
+tools:
+  - name: search_knowledge_base
+    description: Search help-center articles and return the best matches.
+    handler: tools:search_knowledge_base
+    parameters:
+      query: what the customer is asking about
+      max_results: how many articles to return (default 3)
+  - name: analyze_sentiment
+    description: Classify a message as positive, neutral, negative or frustrated.
+    handler: tools:analyze_sentiment
+    parameters:
+      message: the customer's message
+  - name: create_ticket
+    description: Open a support ticket routed to the right team; returns the ticket id.
+    handler: tools:create_ticket
+    parameters:
+      subject: one-line summary of the issue
+      category: technical, billing, account, product or general
+      priority: low, normal, high or urgent
+      customer_email: the customer's email address, if they gave it
+
+env:
+  - name: KNOWLEDGE_BASE_URL
+    description: >-
+      Optional search endpoint. The agent POSTs {"query", "max_results"} to
+      <url>/search and expects {"results": [{"article_id", "title", "content"}]}.
+      Without it, a small built-in sample knowledge base is used.
+    required: false
+  - name: KNOWLEDGE_BASE_API_KEY
+    description: Optional bearer token sent to KNOWLEDGE_BASE_URL.
+    required: false
+    secret: true
+  - name: TICKET_WEBHOOK_URL
+    description: >-
+      Optional URL that receives every new ticket as a JSON POST (a helpdesk,
+      Slack or Zapier webhook). Without it, tickets are only reported back in
+      the conversation.
+    required: false
+    secret: true
+
+metadata:
+  category: customer-support
+  icon: "🎧"
+  examples:
+    - I was charged twice for my subscription this month.
+    - How do I reset my password?
+    - The API has been returning 500 errors since this morning!
