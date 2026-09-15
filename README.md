@@ -24,10 +24,12 @@ curl -X POST https://agntapi.agntspark.com/v1/agents \
   }'
 ```
 
-The response's `url` is the agent. Talk to it:
+The response's `url` is the agent, and `access_key` is its first access key
+(new agents are private; the key is only returned here). Talk to it:
 
 ```bash
 curl -X POST https://<your-agent>.run.agntspark.com/invoke \
+  -H "Authorization: Bearer <access_key>" \
   -H 'content-type: application/json' -d '{"input": "How do I reset my password?"}'
 ```
 
